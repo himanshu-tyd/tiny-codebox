@@ -4,17 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>Peer | Chat</title>
   </head>
   <body>
-    <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
     <div id="videos">
-      <video class="video-player" id="user-1" autoplay></video>
+      <video class="video-player" id="user-1" autoplay class="samallFrame" ></video>
       <video class="video-player" id="user-2" autoplay></video>
 
     </div>
-    <input id="call_id" placeholder="Enter Call ID" />
-    <button id="ans" >Ans</button>
+    <div class="info">
+      <input id="call_id" placeholder="Enter Call ID" />
+      <button id="ans" >Answer</button>
+      <label id="ans-id"></label>
+   
+        <img class="copy" id="copy" title="copy" src="copy.svg" />
+    </div>
+
+    <div class="controles" >
+        <span class="icon-container">
+            <img id="mic" title="mic" class="icon" src="mic.svg" />
+        </span>
+        <span class="icon-container">
+            <img id="camera" title="camera" class="icon" src="camera.svg" />
+        </span>
+        <span class="icon-container">
+            <img id="phone" title="phone" class="icon" src="phone.svg" />
+        </span>
+    </div>
 </body>
 </html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Join Room</title>
+  </head>
+  <body>
+    <form id="form">
+      <input type="text" placeholder="Invite Link" name="invite_link"  />
+      <button type="submit" id="join-room">Join room</button>
+      <span id="error"></span>
+    </form>
+
+    <script>
+      let form =document.getElementById("form")
+
+      form.addEventListener('submit', (e)=>{
+
+        e.preventDefault()
+
+        let inviteLink=e.target.invite_link.value
+
+        if(!inviteLink){  
+         let error= document.getElementById("error")
+         error.style.color='red'
+         error.innerHTML='please enter room id'
+        }
+
+        window.location=`index.html?room=${inviteLink}`
+        
+      })
+
+    </script>
+  </body>
+</html>

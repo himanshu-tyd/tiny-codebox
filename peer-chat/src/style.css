@@ -1,13 +1,94 @@
 
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
 #videos{
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap:2rem;
+    grid-template-columns: 1fr;
+    height: 100vh;
+    overflow: hidden;   
+    position: relative;
 }
 
 .video-player{
     background-color: black;
     width: 100%;
-    height: 300px;
+    height: 100%;
+    object-fit: cover;
+}
+
+#user-2{
+    display: none;
+}
+
+.smallFrame{
+    position: absolute;
+    top: 50;
+    right: 80;
+    z-index: 20;
+    width: 400px;
+    height: 250px;
+    border-radius: 20px;
+    transform: translateX(80px) translateY(30px);
+    box-shadow: 0px 1px 13px -1px rgba(0, 0, 0, 0.74);
+    border-color: 1px solid violet;
+}
+
+.info{
+    position: absolute;
+    bottom: 0;
+    border-radius: 5px;
+    transform: translateX(10px) translateY(-20px);
+    z-index: 30;
+    background-color: rgba(0, 0, 0, 0.607);
+    padding: 5px 8px;
+    display: flex ;
+    width: auto;
+    gap: 4px;
+    align-items: center;
+}
+
+#ans-id{
+    color: green;
+}
+
+.copy{
+    width: 20px;
+    color: red;
+    background-color: aqua;
+    border-radius: 2px;
+}
+
+
+.controles{
+    position: absolute;
+    transform: translateX(750px) translateY(-20px);
+    bottom: 0;
+    display: flex;
+    gap: 30px;
+
+}
+
+.icon-container{
+    padding: 30px;
+    background-color: rgb(255, 59, 59);
+    display: flex;
+    flex-direction: column ;
+    width: auto;
+    border-radius: 50px;
+    cursor: pointer;
+    
+}
+
+.icon-container:hover{
+    background-color:rgb(222, 0, 0);
+}
+
+.icon-container .icon{
+    color: white;
+    width: 30px;
+    color-scheme: white;
 }

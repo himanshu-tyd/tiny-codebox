@@ -23,8 +23,22 @@ let remoteStream: MediaStream;
 
 // Connection identifiers
 
+const contrains: MediaStreamConstraints = {
+  video: {
+    width: { min: 640, ideal: 1920, max: 1920 },
+    height: { min: 480, ideal: 1080, max: 1080 },
+    facingMode: "user",
+  },
+  audio: true,
+};
+
 const ansEl = document.getElementById("ans");
 const call_id = document.getElementById("call_id") as HTMLInputElement;
+let ansId: string;
+
+const queryString = window.location.search;
+const urlParams = new URLSearchParams(queryString);
+console.log("querstinr", JSON.stringify(urlParams));
 
 // ICE server configuration
 const servers = {
@@ -48,14 +62,14 @@ const init = async () => {
   try {
     // Create unique call document
     const callDoc = doc(db, "calls", crypto.randomUUID());
+    ansId=callDoc.id
 
-    call_id.value = String(callDoc.id);
+    document.getElementById('ans-id')!.innerHTML=callDoc.id
+
+  
 
     console.log("🎥 Requesting local media stream...");
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false,
-    });
+    localStream = await navigator.mediaDevices.getUserMedia(contrains);
     console.log("✅ Local media stream received");
 
     // Display local video stream
@@ -76,6 +90,24 @@ const init = async () => {
     console.error("❌ Init error:", e);
   }
 };
+
+
+
+//handles
+
+const handleCopyId=(id:string)=>{
+  navigator.clipboard.writeText(id)
+  alert('copied')
+}
+
+document.getElementById('copy')!.onclick=()=>handleCopyId(ansId)
+
+document.getElementById('mic')!.onclick=()=>{
+  //get start form here
+}
+
+
+
 
 /**
  * Create and send an offer
@@ -156,7 +188,10 @@ const createOffer = async (
       const answerDescription = new RTCSessionDescription(data.answer);
       peerConnection
         .setRemoteDescription(answerDescription)
-        .then(() => console.log("📥 Answer set as remote description"))
+        .then(() => {
+          console.log("📥 Answer set as remote description");
+          remoteUser.style.display = "block";
+        })
         .catch((err) =>
           console.error("❌ Error setting remote description:", err)
         );
@@ -171,7 +206,9 @@ const createOffer = async (
         const candidate = new RTCIceCandidate(candidateData);
         peerConnection
           .addIceCandidate(candidate)
-          .then(() => console.log("✅ Answer-side ICE candidate added"))
+          .then(() => {
+            console.log("✅ Answer-side ICE candidate added");
+          })
           .catch((err) =>
             console.error("❌ Failed to add answer ICE candidate:", err)
           );
@@ -188,6 +225,9 @@ const createOffer = async (
  */
 const handleAnswer = async (callId: string) => {
   console.log("📞 Handling answer for call:", callId);
+
+  document.getElementById("user-2")!.style.display = "block";
+  document.getElementById("user-1")?.classList.add("smallFrame");
 
   // Get call document
   const callDoc = doc(db, "calls", callId);
@@ -240,17 +280,18 @@ const handleAnswer = async (callId: string) => {
 };
 
 ansEl?.addEventListener("click", async () => {
-  try {
-    const id = call_id.value;
+  const id = call_id.value;
 
-    if (!id) return;
+  if (!id) return;
 
-    await handleAnswer(call_id.value);
-
-    console.log("answer send");
-  } catch (e) {
-    console.log(e);
-  }
+  await handleAnswer(call_id.value);
 });
-// Initialize the application
+
+window.addEventListener("beforeunload", () => {
+  document.getElementById("user-2")!.style.display = "none";
+});
+
 init();
+
+// Initialize the applicatio
+
