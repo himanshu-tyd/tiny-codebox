@@ -1,33 +1,32 @@
-import AgoraRTM, { RTMConfig } from 'agora-rtm-sdk';
-import './style.css'
+import {
+  addDoc,
+  collection,
+  CollectionReference,
+  doc,
+  DocumentData,
+  DocumentReference,
+  DocumentSnapshot,
+  getDoc,
+  onSnapshot,
+  QuerySnapshot,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
+import "./style.css";
+import { db } from "./firebaseConfig";
 
-//steps
-//1. let localstreaData
-//2. get access of video and audio
-//3. display video in frame
+// WebRTC + Firestore Signaling Setup with Enhanced Logging
 
-//4 create RTCpeerConnection()
-//5 make  offer and make connection
-//6 access the mediaStrema and set to remoteStream
-//7 create offer and set peerconnection and setDescription
-//8 create stun server
-//9 now just pass server to our peerconnection
-//10 get the local tranks and add them to connection so peerconnection get it from there
-//12 listen ther peerconnetion has trancks
-//13 generate ICE candidate of peerconnection
-//14 use signaling to transfer data make own if you want
-//15 creat User UID
-//16 getClient that we are login right now mean browser
-//17 crate channle we can identify wher use shoudl join
+// Media stream declarations
+let localStream: MediaStream;
+let remoteStream: MediaStream;
 
-let localStream:MediaStream
-let remoteStream:MediaStream
-let APP_ID = "f47c9dcfe7714ae595215f905d5d0410";
-let token ='007eJxTYMhSEtGUieMy7dBb3WxXXyfIllDc3Pz2wz3re5oMl1PdjyswpJmYJ1umJKelmpsbmiSmmlqaGhmaplkamKaYphiYGBrEyH5MbwhkZLgnUsvCyACBID4LQ25iZh4DAwA/xxxD'
-let uid = String(Math.floor(Math.random()*1000));
-let client;
-let channel;
+// Connection identifiers
 
+const ansEl = document.getElementById("ans");
+const call_id = document.getElementById("call_id") as HTMLInputElement;
+
+// ICE server configuration
 const servers = {
   iceServers: [
     {
@@ -36,89 +35,222 @@ const servers = {
   ],
 };
 
+// Create peer connection
+const peerConnection = new RTCPeerConnection(servers);
+
+/**
+ * Initialize the WebRTC connection
+ * - Creates a unique call document in Firestore
+ * - Sets up local media stream
+ * - Initiates offer creation process
+ */
 const init = async () => {
   try {
+    // Create unique call document
+    const callDoc = doc(db, "calls", crypto.randomUUID());
 
-    const { RTM   } = AgoraRTM;
+    call_id.value = String(callDoc.id);
 
-    const rtmConfig:RTMConfig = {
-      cipherKey: "yourCipherKey",
-      presenceTimeout: 300,
-      logUpload: true,
-      logLevel: "debug",
-      cloudProxy: false,
-      useStringUserId: false,
-    //   privateConfig: {
-    //     serviceType: ["MESSAGE", "STREAM"],
-    //   },
-      heartbeatInterval: 5,
-    };
-    client = new RTM(APP_ID, uid, rtmConfig);
-
-    // Login to RTM
-    const result=await client.login({token : token});
-
-    console.log(result)
-    if(result){
-        console.log("RTM login success");
-    }
-
-    // Create a channel
-    channel = await client.createChannel("main");
-    await channel.subscribe();
-    console.log("Channel joined");
-    channel;
-
-    channel.on("MemberJoined", handleJoined);
-
+    console.log("🎥 Requesting local media stream...");
     localStream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: false,
     });
-    document.getElementById("user-1").srcObject = localStream;
+    console.log("✅ Local media stream received");
 
-    createOffer();
+    // Display local video stream
+    const localUser = document.getElementById("user-1") as HTMLVideoElement;
+    if (!localUser) {
+      console.error("❌ Local video element not found");
+      return;
+    }
+    localUser.srcObject = localStream;
+
+    // Setup offer creation process
+    console.log("📞 Creating offer...");
+    const offerCandidates = collection(callDoc, "offerCandidates");
+    const answerCandidates = collection(callDoc, "answerCandidates");
+
+    await createOffer(callDoc, offerCandidates, answerCandidates);
   } catch (e) {
-    console.error("Init error:", e);
+    console.error("❌ Init error:", e);
   }
 };
 
-const handleJoined = async (id) => {
-  console.log("A new user joined", id);
-};  
+/**
+ * Create and send an offer
+ * - Sets up remote stream container
+ * - Adds local tracks to peer connection
+ * - Handles ICE candidates
+ * - Creates and stores offer in Firestore
+ */
+const createOffer = async (
+  callDoc: DocumentReference<DocumentData, DocumentData>,
+  offerCandidates: CollectionReference<DocumentData>,
+  answerCandidates: CollectionReference<DocumentData>
+) => {
+  console.log("🔧 Creating RTCPeerConnection...");
 
-let createOffer = async () => {
-  const peerConnection = new RTCPeerConnection(servers);
-
+  // Set up remote stream container
   remoteStream = new MediaStream();
-  const remoteUser:HTMLVideoElement=document.getElementById("user-2")
+  const remoteUser = document.getElementById("user-2") as HTMLVideoElement;
+
+  if (!remoteUser) {
+    console.error("❌ Remote video element #user-2 not found");
+    return;
+  }
 
   remoteUser.srcObject = remoteStream;
 
-  //add all localstream tracks in to peeerconnection
-  localStream.getTracks().forEach((tracks) => {
-    peerConnection.addTrack(tracks, localStream);
+  // Add local tracks to peer connection
+  console.log("🎤 Adding local tracks to PeerConnection...");
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+    console.log("➕ Track added:", track.kind);
   });
 
-  //listen tracks and add theme into remotestream
+  // Handle incoming remote tracks
   peerConnection.addEventListener("track", (e) => {
+    console.log("📡 Remote track received:", e.streams);
     e.streams[0].getTracks().forEach((track) => {
       remoteStream.addTrack(track);
+      console.log("🎬 Track added to remote stream:", track.kind);
     });
   });
 
-  peerConnection.addEventListener("icecandidate", (e) => {
+  // Handle and store ICE candidates
+  peerConnection.addEventListener("icecandidate", async (e) => {
     if (e.candidate) {
-      console.log("New ice candidate:", e.candidate);
+      console.log("❄️ New ICE candidate generated:", e.candidate);
+      try {
+        await addDoc(offerCandidates, e.candidate.toJSON());
+        console.log("✅ ICE candidate stored in Firestore");
+      } catch (error) {
+        console.error("🔥 Error storing ICE candidate:", error);
+      }
     }
   });
 
-  let offer = await peerConnection.createOffer();
+  // Create and set local description (offer)
+  const offerDescription = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offerDescription);
 
-  //whenever we set description it start to request to stun server and send ice candidates
-  await peerConnection.setLocalDescription(offer);
+  console.log(
+    "📨 Offer created and set as local description:",
+    offerDescription
+  );
 
-  console.log("offer :", offer);
+  // Format and store offer in Firestore
+  const offer = {
+    sdp: offerDescription.sdp,
+    type: offerDescription.type,
+  };
+
+  await setDoc(callDoc, { offer });
+  console.log("📝 Offer saved to Firestore");
+
+  // Listen for answer from remote peer
+  onSnapshot(callDoc, (snapshot: DocumentSnapshot) => {
+    const data = snapshot.data();
+    if (!peerConnection.currentRemoteDescription && data?.answer) {
+      const answerDescription = new RTCSessionDescription(data.answer);
+      peerConnection
+        .setRemoteDescription(answerDescription)
+        .then(() => console.log("📥 Answer set as remote description"))
+        .catch((err) =>
+          console.error("❌ Error setting remote description:", err)
+        );
+    }
+  });
+
+  // Listen for ICE candidates from remote peer
+  onSnapshot(answerCandidates, (snapshot: QuerySnapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const candidateData = change.doc.data();
+        const candidate = new RTCIceCandidate(candidateData);
+        peerConnection
+          .addIceCandidate(candidate)
+          .then(() => console.log("✅ Answer-side ICE candidate added"))
+          .catch((err) =>
+            console.error("❌ Failed to add answer ICE candidate:", err)
+          );
+      }
+    });
+  });
 };
 
+/**
+ * Handle answering an incoming call
+ * - Retrieves call data from Firestore
+ * - Creates and sends answer
+ * - Processes ICE candidates
+ */
+const handleAnswer = async (callId: string) => {
+  console.log("📞 Handling answer for call:", callId);
+
+  // Get call document
+  const callDoc = doc(db, "calls", callId);
+  const answerCandidates = collection(callDoc, "answerCandidates");
+  const offerCandidates = collection(callDoc, "offerCandidates");
+
+  // Check if call exists
+  const callSnap = await getDoc(callDoc);
+  if (!callSnap.exists()) {
+    console.error("❌ Call not found with ID:", callId);
+    return alert("Call not found");
+  }
+
+  // Process offer from caller
+  const callData = callSnap.data();
+  const offerDescription = callData.offer;
+  await peerConnection.setRemoteDescription(
+    new RTCSessionDescription(offerDescription)
+  );
+  console.log("📥 Offer set as remote description");
+
+  // Create and set answer
+  const answerDescription = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answerDescription);
+  console.log("📤 Answer created and set as local description");
+
+  // Format and store answer in Firestore
+  const answer = {
+    sdp: answerDescription.sdp,
+    type: answerDescription.type,
+  };
+
+  await updateDoc(callDoc, { answer });
+  console.log("📝 Answer saved to Firestore");
+
+  // Listen for and process ICE candidates from caller
+  onSnapshot(offerCandidates, (snapshot: QuerySnapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const data = change.doc.data();
+        peerConnection
+          .addIceCandidate(new RTCIceCandidate(data))
+          .then(() => console.log("✅ Offer-side ICE candidate added"))
+          .catch((err) =>
+            console.error("❌ Failed to add offer ICE candidate:", err)
+          );
+      }
+    });
+  });
+};
+
+ansEl?.addEventListener("click", async () => {
+  try {
+    const id = call_id.value;
+
+    if (!id) return;
+
+    await handleAnswer(call_id.value);
+
+    console.log("answer send");
+  } catch (e) {
+    console.log(e);
+  }
+});
+// Initialize the application
 init();

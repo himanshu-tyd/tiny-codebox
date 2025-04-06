@@ -13,6 +13,7 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "agora-rtm-sdk": "^2.2.1"
+    "agora-rtm-sdk": "^2.2.1",
+    "firebase": "^11.6.0"
   }
 }
