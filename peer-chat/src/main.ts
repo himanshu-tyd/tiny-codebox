@@ -62,14 +62,15 @@ const init = async () => {
   try {
     // Create unique call document
     const callDoc = doc(db, "calls", crypto.randomUUID());
-    ansId=callDoc.id
+    ansId = callDoc.id;
 
-    document.getElementById('ans-id')!.innerHTML=callDoc.id
+    console.log('ans id', ansId)
 
-  
+    document.getElementById("ans-id")!.innerHTML = callDoc.id;
 
     console.log("🎥 Requesting local media stream...");
     localStream = await navigator.mediaDevices.getUserMedia(contrains);
+
     console.log("✅ Local media stream received");
 
     // Display local video stream
@@ -79,6 +80,7 @@ const init = async () => {
       return;
     }
     localUser.srcObject = localStream;
+    localStream.getAudioTracks().forEach((tracks) => (tracks.enabled = false));
 
     // Setup offer creation process
     console.log("📞 Creating offer...");
@@ -91,23 +93,14 @@ const init = async () => {
   }
 };
 
-
-
 //handles
 
-const handleCopyId=(id:string)=>{
-  navigator.clipboard.writeText(id)
-  alert('copied')
-}
+const handleCopyId = (id: string) => {
+  navigator.clipboard.writeText(id);
+  alert("copied");
+};
 
-document.getElementById('copy')!.onclick=()=>handleCopyId(ansId)
-
-document.getElementById('mic')!.onclick=()=>{
-  //get start form here
-}
-
-
-
+document.getElementById("copy")!.onclick = () => handleCopyId(ansId);
 
 /**
  * Create and send an offer
@@ -231,7 +224,6 @@ const handleAnswer = async (callId: string) => {
 
   // Get call document
   const callDoc = doc(db, "calls", callId);
-  const answerCandidates = collection(callDoc, "answerCandidates");
   const offerCandidates = collection(callDoc, "offerCandidates");
 
   // Check if call exists
@@ -291,7 +283,44 @@ window.addEventListener("beforeunload", () => {
   document.getElementById("user-2")!.style.display = "none";
 });
 
+const handleToggleCamera = () => {
+  const videoTrack = localStream
+    .getTracks()
+    .find((track) => track.kind === "video");
+
+  if (videoTrack?.enabled) {
+    videoTrack.enabled = false;
+    document.getElementById("camera")!.style.backgroundColor =
+      " rgb(255, 109, 109)";
+  } else {
+    videoTrack!.enabled = true;
+    document.getElementById("camera")!.style.backgroundColor =
+      "  rgb(255, 59, 59)";
+  }
+};
+
+const handleToggleMic = () => {
+  const audioTrack = localStream
+    .getTracks()
+    .find((track) => track.kind === "audio");
+
+  if (audioTrack?.enabled) {
+    audioTrack.enabled = false;
+    document.getElementById("mic")!.style.backgroundColor =
+      " rgb(255, 109, 109)";
+  } else {
+    audioTrack!.enabled = true;
+    document.getElementById("mic")!.style.backgroundColor =
+      "  rgb(255, 59, 59)";
+  }
+};
+
+document.getElementById("mic")!.addEventListener("click", handleToggleMic);
+
+document
+  .getElementById("camera")!
+  .addEventListener("click", handleToggleCamera);
+
 init();
 
 // Initialize the applicatio
-
